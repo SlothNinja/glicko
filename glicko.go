@@ -1,48 +1,71 @@
 // Implements the Glicko2 Rating System described at http://www.glicko.net/glicko.html.
 package glicko
 
-import . "math"
+import (
+        "errors"
+        "math"
+)
 
-type Params struct {
-        r       float64
-        rdf     float64
-        minRD   float64
-        maxRD   float64
+const (
+        // A frequent player may end up with an RD approaching 0 which results in a rating that doesn't change despite improvement
+        // A minimum RD helps prevent such stagnation.  The value defaults to 30 which is believed to be sufficient for most uses.
+        defaultMinRD float64 = 30
+
+        // RD shows uncertainty in the rating.  A rating for a person that has played games should be more certain than a new player.
+        // MaxRD provides an upper limit and likely should be set to the RD for a new unranked player.
+        // Default value is 350.
+        defaultMaxRD float64 = 350
+
+        // T represents the number of rating periods that have past since the present rating was last updated.
+        // Defaults to 1.
+        defaultT float64 = 1.0
+
+        // C is a constant used to decay RD over time.
+        // See, www.glicko.net for a discussion of its value.
+        // Default is 63.2, which corresponds to a decay length of 30 periods when 350 is used for RD of unranked player.
+        defaultC float64 = 63.2
+)
+
+type Rated interface {
+        // Rating
+        R() float64
+        // Rating Deviation
+        RD() float64
+}
+
+type options struct {
+        minRD float64
+        maxRD float64
         t       float64
         c       float64
 }
-
-// A frequent player may end up with an RD approaching 0 which results in a rating that doesn't change despite improvement
-// A minimum RD helps prevent such stagnation.  The value defaults to 30 which is believed to be sufficient for most uses.
-func (this *Params) SetMinRD(minRD float64) { this.minRD = minRD }
-
-// RD shows uncertainty in the rating.  A rating for a person that has played games should be more certain than a new player.
-// MaxRD provides an upper limit and likely should be set to the RD for a new unranked player.
-// Default value is 350.
-func (this *Params) SetMaxRD(maxRD float64) { this.maxRD = maxRD }
-
-// T represents the number of rating periods that have past since the present rating was last updated.
-// Defaults to 1.
-func (this *Params) SetT(t float64) { this.t = t }
-
-// C is a constant used to decay RD over time.
-// See, www.glicko.net for a discussion of its value.
-// Default is 63.2, which corresponds to a decay length of 30 periods when 350 is used for RD of unranked player.
-func (this *Params) SetC(c float64) { this.c = c }
-
-func NewParams(r, rd float64) *Params { return &Params{r, rd, 30, 350, 1, 64} }
 
 // Result records a single game outcome against an opponent and that oppenents Params at the time.
 type Contest struct {
         // 1 for win, 0 for loss, 0.5 for tie
         Outcome         float64
-        // Params of opponent
-        *Params
+        // Rating and Deviation of Opponent
+        Rated
 }
 
-func (this *Params) rd() float64 { return Min(Sqrt(this.rdf * this.rdf + this.t * this.c * this.c), this.maxRD) }
+func rd(player Rated, o *options) float64 {
+        return math.Min(math.Sqrt(player.RD() * player.RD() + o.c * o.c * o.t), o.maxRD)
+}
 
-func (this *Params) rd2() float64 { return this.rd() * this.rd() }
+func processOptions(os ...float64) (*options, error) {
+        switch len(os) {
+        case 0:
+                return &options{defaultMinRD, defaultMaxRD, defaultT, defaultC}, nil
+        case 4:
+                return &options{os[0], os[1], os[2], os[3]}, nil
+        }
+        return nil, errors.New("Wrong number of options.  You must provide either 0 or 4 options.")
+}
+
+func rd2(player Rated, o *options) float64 {
+        newRD := rd(player, o)
+        return newRD * newRD
+}
 
 // A collection of results for a single player during rating period
 type Contests []*Contest
@@ -50,46 +73,58 @@ type Contests []*Contest
 const q = 0.00575646273249 // Log(10) / 400
 const q2 = q * q
 
-func (this *Params) rPrime(cs Contests) float64 {
-        return Floor(this.r + (q / ((1 / this.rd2()) + (1 / this.d2(cs)))) * this.gsSum(cs))
+func rPrime(player Rated, cs Contests, o *options) float64 {
+        return math.Floor(player.R() + (q / ((1 / rd2(player, o)) + (1 / d2(player, cs, o)))) * gsSum(player, cs, o))
 }
 
-func (this *Params) d2(cs Contests) float64 {
+func d2(player Rated, cs Contests, o *options) float64 {
         sum := 0.0
         for _, contest := range cs {
-                gRD := g(contest.rd())
-                sum += gRD * gRD * this.e1e(contest)
+                newRD := rd(contest.Rated, o)
+                gRD := g(newRD)
+                sum += gRD * gRD * e1e(player, contest, o)
         }
         return 1 / (q2 * sum )
 }
-func g(rd float64) float64 { return 1 / Sqrt(1 + (3 * q2 * Pow(rd, 2)) / Pow(Pi, 2)) }
+func g(rd float64) float64 {
+        return 1 / math.Sqrt(1 + (3 * q2 * math.Pow(rd, 2)) / math.Pow(math.Pi, 2))
+}
 
-func (this *Params) e(c *Contest) float64 { return 1 / (1 + Pow(10, g(c.rd()) * (this.r - c.r) / -400)) }
+func e(player Rated, contest *Contest, o *options) float64 {
+        return 1 / (1 + math.Pow(10, g(rd(contest.Rated, o)) * (player.R() - contest.R()) / -400))
+}
 
-func (this *Params) e1e(c *Contest) float64 {
-        ec := this.e(c)
+func e1e(player Rated, contest *Contest, o *options) float64 {
+        ec := e(player, contest, o)
         return ec * ( 1 - ec)
 }
 
-func (this *Params) gsSum(cs Contests) (sum float64) {
-        for _, c := range cs {
-                sum = g(c.rd()) * (c.Outcome - this.e(c))
+func gsSum(player Rated, cs Contests, o *options) (sum float64) {
+        for _, contest := range cs {
+                sum = g(rd(contest, o)) * (contest.Outcome - e(player, contest, o))
         }
         return sum
 }
 
-func (this *Params) rdPrime(cs Contests) float64 {
-        return Max(Floor(Sqrt(1 / ((1 / this.rd2()) + (1 / this.d2(cs))))), this.minRD)
+func rdPrime(player Rated, cs Contests, o *options) float64 {
+        return math.Max(math.Floor(math.Sqrt(1 / ((1 / rd2(player, o)) + (1 / d2(player, cs, o))))), o.minRD)
 }
 
-func (this *Params) UpdateRating(cs Contests) *Params {
-        if len(cs) == 0 {
-                return NewParams(this.r, this.rd())
+// Returns updated rating and updated rating deviation based on the provided contest results.
+// If len(options) == 0, default values for minRD, maxRD, t, and c are used.
+// Otherwise, must provide minRD, maxRD, t, and c.
+func UpdateRating(player Rated, cs Contests, options ...float64) (float64, float64, error) {
+        o, err := processOptions(options...)
+        switch {
+        case err != nil:
+                return 0, 0, err
+        case len(cs) == 0:
+                return player.R(), rd(player, o), nil
         }
-        return NewParams(this.rPrime(cs), this.rdPrime(cs))
+        return rPrime(player, cs, o), rdPrime(player, cs, o), nil
 }
 
-func (this *Params) ConfidenceInterval() (float64, float64) {
-        twiceRd := 2.0 * this.rdf
-        return this.r - twiceRd, this.r + twiceRd
+func ConfidenceInterval(player Rated) (float64, float64) {
+        twiceRd := 2.0 * player.RD()
+        return player.R() - twiceRd, player.R() + twiceRd
 }

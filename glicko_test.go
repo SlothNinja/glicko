@@ -5,17 +5,25 @@ import (
 )
 
 type player struct {
-        *Params
+        r, rd float64
+}
+
+func (this *player) R() float64 {
+        return this.r
+}
+
+func (this *player) RD() float64 {
+        return this.rd
 }
 
 type players []*player
 
-var TestPlayers = []*player {
-        &player{NewParams(1500, 200)},
-        &player{NewParams(1400, 30)},
-        &player{NewParams(1550, 100)},
-        &player{NewParams(1700, 300)},
-        &player{NewParams(1500, 350)},
+var testPlayers = []*player {
+        &player{1500, 200},
+        &player{1400, 30},
+        &player{1550, 100},
+        &player{1700, 300},
+        &player{1500, 350},
 }
 
 type varianceTest struct {
@@ -24,11 +32,35 @@ type varianceTest struct {
         out     float64
 }
 
-func newContest(params *Params, outcome float64) *Contest {
+func newContest(r, rd, outcome float64) *Contest {
         contest := new(Contest)
-        contest.Params = params
+        opponent := new(player)
+        opponent.r = r
+        opponent.rd = rd
+        contest.Rated = opponent
         contest.Outcome = outcome
         return contest
+}
+
+type rdTest struct {
+        in      *player
+        out     float64
+}
+
+var rdTests = []*rdTest{
+        &rdTest{testPlayers[0], 209.74803932337483},
+        &rdTest{testPlayers[1], 69.95884504478329},
+        &rdTest{testPlayers[2], 118.29725271535261},
+}
+
+var defaultOptions = &options{defaultMinRD, defaultMaxRD, defaultT, defaultC}
+
+func TestRD(t *testing.T) {
+	for _, ut := range rdTests {
+                if newRD := rd(ut.in, defaultOptions); ut.out != newRD {
+			t.Errorf("TestRD() = %+v, want %+v.", newRD, ut.out)
+		}
+	}
 }
 
 type gRDTest struct {
@@ -57,15 +89,15 @@ type eTest struct {
 }
 
 var eTests = []*eTest{
-        &eTest{TestPlayers[0], newContest(TestPlayers[1].Params, 1), 0.6368428359975715},
-        &eTest{TestPlayers[0], newContest(TestPlayers[2].Params, 0), 0.4330698170429618},
-        &eTest{TestPlayers[0], newContest(TestPlayers[3].Params, 0), 0.3047183664858115},
+        &eTest{testPlayers[0], newContest(testPlayers[1].r, testPlayers[1].rd, 1), 0.6369062639623734},
+        &eTest{testPlayers[0], newContest(testPlayers[2].r, testPlayers[2].rd, 0), 0.43304012130623676},
+        &eTest{testPlayers[0], newContest(testPlayers[3].r, testPlayers[3].rd, 0), 0.304672365112378},
 }
 
 func TestE(t *testing.T) {
 	for _, ut := range eTests {
-                if e := ut.p.e(ut.in); e != ut.out {
-			t.Errorf("TestE() = %+v, want %+v.", e, ut.out)
+                if newE := e(ut.p, ut.in, defaultOptions); newE != ut.out {
+			t.Errorf("TestE() = %+v, want %+v.", newE, ut.out)
 		}
 	}
 }
@@ -78,16 +110,20 @@ type d2Test struct {
 
 var d2Tests = []*d2Test{
         &d2Test{
-                TestPlayers[0],
-                Contests{newContest(TestPlayers[1].Params, 1), newContest(TestPlayers[2].Params, 0), newContest(TestPlayers[3].Params, 0)},
-                55477.92847171939,
+                testPlayers[0],
+                Contests{
+                        newContest(testPlayers[1].r, testPlayers[1].rd, 1),
+                        newContest(testPlayers[2].r, testPlayers[2].rd, 0),
+                        newContest(testPlayers[3].r, testPlayers[3].rd, 0),
+                },
+                55433.47321339554,
         },
 }
 
 func TestD2(t *testing.T) {
 	for _, ut := range d2Tests {
-                if d2 := ut.p.d2(ut.in); d2 != ut.out {
-			t.Errorf("TestD2() = %+v, want %+v.", d2, ut.out)
+                if newD2 := d2(ut.p, ut.in, defaultOptions); newD2 != ut.out {
+			t.Errorf("TestD2() = %+v, want %+v.", newD2, ut.out)
 		}
 	}
 }
@@ -100,16 +136,20 @@ type rPrimeTest struct {
 
 var rPrimeTests = []*rPrimeTest{
         &rPrimeTest{
-                TestPlayers[0],
-                Contests{newContest(TestPlayers[1].Params, 1), newContest(TestPlayers[2].Params, 0), newContest(TestPlayers[3].Params, 0)},
+                testPlayers[0],
+                Contests{
+                        newContest(testPlayers[1].r, testPlayers[1].rd, 1),
+                        newContest(testPlayers[2].r, testPlayers[2].rd, 0),
+                        newContest(testPlayers[3].r, testPlayers[3].rd, 0),
+                },
                 1469,
         },
 }
 
 func TestRPrime(t *testing.T) {
 	for _, ut := range rPrimeTests {
-                if rPrime := ut.p.rPrime(ut.in); rPrime != ut.out {
-			t.Errorf("TestRPrime() = %+v, want %+v.", rPrime, ut.out)
+                if newRPrime := rPrime(ut.p, ut.in, defaultOptions); newRPrime != ut.out {
+			t.Errorf("TestRPrime() = %+v, want %+v.", newRPrime, ut.out)
 		}
 	}
 }
@@ -122,16 +162,20 @@ type rdPrimeTest struct {
 
 var rdPrimeTests = []*rdPrimeTest{
         &rdPrimeTest{
-                TestPlayers[0],
-                Contests{newContest(TestPlayers[1].Params, 1), newContest(TestPlayers[2].Params, 0), newContest(TestPlayers[3].Params, 0)},
+                testPlayers[0],
+                Contests{
+                        newContest(testPlayers[1].r, testPlayers[1].rd, 1),
+                        newContest(testPlayers[2].r, testPlayers[2].rd, 0),
+                        newContest(testPlayers[3].r, testPlayers[3].rd, 0),
+                },
                 156,
         },
 }
 
 func TestRDPrime(t *testing.T) {
 	for _, ut := range rdPrimeTests {
-                if rdPrime := ut.p.rdPrime(ut.in); rdPrime != ut.out {
-			t.Errorf("TestRDPrime() = %+v, want %+v.", rdPrime, ut.out)
+                if newRDPrime := rdPrime(ut.p, ut.in, defaultOptions); newRDPrime != ut.out {
+			t.Errorf("TestRDPrime() = %+v, want %+v.", newRDPrime, ut.out)
 		}
 	}
 }
@@ -144,17 +188,24 @@ type updateRatingTest struct {
 
 var updateRatingTests = []updateRatingTest{
         updateRatingTest{
-                TestPlayers[0],
-                Contests{newContest(TestPlayers[1].Params, 1), newContest(TestPlayers[2].Params, 0), newContest(TestPlayers[3].Params, 0)},
-                &player{NewParams(1469, 156)},
+                testPlayers[0],
+                Contests{
+                        newContest(testPlayers[1].r, testPlayers[1].rd, 1),
+                        newContest(testPlayers[2].r, testPlayers[2].rd, 0),
+                        newContest(testPlayers[3].r, testPlayers[3].rd, 0),
+                },
+                &player{1469, 156},
         },
 }
 
 func TestUpdateRating(t *testing.T) {
 	for _, ut := range updateRatingTests {
-                updatedParams := ut.p.UpdateRating(ut.in)
-                if !(updatedParams.rdf == ut.out.Params.rdf && updatedParams.r == ut.out.Params.r) {
-			t.Errorf("UpdateRating() = %+v, want %+v.", updatedParams, ut.out.Params)
+                newR, newRD, err := UpdateRating(ut.p, ut.in)
+                if err != nil {
+			t.Errorf("UpdateRating() err = %v, expect nil.", err)
+                }
+                if !(newRD == ut.out.RD() && newR == ut.out.R()) {
+			t.Errorf("UpdateRating() = %v %v, want %v %v.", newR, newRD, ut.out.R(), ut.out.RD())
 		}
 	}
 }
@@ -167,20 +218,23 @@ type updateDecayTest struct {
 
 var updateDecayTests = []updateDecayTest{
         updateDecayTest{
-                TestPlayers[1],
+                testPlayers[1],
                 Contests{},
-                &player{NewParams(1400, 350)},
+                &player{1400, 350},
         },
 }
 
 func TestDecayRating(t *testing.T) {
 	for _, ut := range updateDecayTests {
-                for i := 0; i < 30; i++ {
-                        updatedParams := ut.p.UpdateRating(ut.in)
-                        ut.p.Params = updatedParams
+                for i := 0; i < 31; i++ {
+                        var err error
+                        ut.p.r, ut.p.rd, err = UpdateRating(ut.p, ut.in)
+                        if err != nil {
+                                t.Errorf("UpdateRating() err = %v, expect nil.", err)
+                        }
                 }
-                if !(ut.p.rdf == ut.out.Params.rdf && ut.p.r == ut.out.Params.r) {
-			t.Errorf("DecayRating() = %+v, want %+v.", ut.p.Params, ut.out.Params)
+                if !(ut.p.rd == ut.out.RD() && ut.p.r == ut.out.R()) {
+			t.Errorf("DecayRating() = %v %v, want %v %v.", ut.p.r, ut.p.rd, ut.out.R(), ut.out.RD())
 		}
 	}
 }
