@@ -5,25 +5,23 @@ import (
 )
 
 type player struct {
-        r, rd float64
+        *Rank
 }
 
-func (this *player) R() float64 {
-        return this.r
-}
-
-func (this *player) RD() float64 {
-        return this.rd
+func newPlayer(r, rd float64) *player {
+        p := new(player)
+        p.Rank = &Rank{r, rd}
+        return p
 }
 
 type players []*player
 
 var testPlayers = []*player {
-        &player{1500, 200},
-        &player{1400, 30},
-        &player{1550, 100},
-        &player{1700, 300},
-        &player{1500, 350},
+        newPlayer(1500, 200),
+        newPlayer(1400, 30),
+        newPlayer(1550, 100),
+        newPlayer(1700, 300),
+        newPlayer(1500, 350),
 }
 
 type varianceTest struct {
@@ -34,10 +32,7 @@ type varianceTest struct {
 
 func newContest(r, rd, outcome float64) *Contest {
         contest := new(Contest)
-        opponent := new(player)
-        opponent.r = r
-        opponent.rd = rd
-        contest.Rated = opponent
+        contest.Rank = newPlayer(r, rd).Rank
         contest.Outcome = outcome
         return contest
 }
@@ -57,7 +52,7 @@ var defaultOptions = &options{defaultMinRD, defaultMaxRD, defaultT, defaultC}
 
 func TestRD(t *testing.T) {
 	for _, ut := range rdTests {
-                if newRD := rd(ut.in, defaultOptions); ut.out != newRD {
+                if newRD := rd(ut.in.Rank, defaultOptions); ut.out != newRD {
 			t.Errorf("TestRD() = %+v, want %+v.", newRD, ut.out)
 		}
 	}
@@ -89,14 +84,14 @@ type eTest struct {
 }
 
 var eTests = []*eTest{
-        &eTest{testPlayers[0], newContest(testPlayers[1].r, testPlayers[1].rd, 1), 0.6369062639623734},
-        &eTest{testPlayers[0], newContest(testPlayers[2].r, testPlayers[2].rd, 0), 0.43304012130623676},
-        &eTest{testPlayers[0], newContest(testPlayers[3].r, testPlayers[3].rd, 0), 0.304672365112378},
+        &eTest{testPlayers[0], newContest(testPlayers[1].R, testPlayers[1].RD, 1), 0.6369062639623734},
+        &eTest{testPlayers[0], newContest(testPlayers[2].R, testPlayers[2].RD, 0), 0.43304012130623676},
+        &eTest{testPlayers[0], newContest(testPlayers[3].R, testPlayers[3].RD, 0), 0.304672365112378},
 }
 
 func TestE(t *testing.T) {
 	for _, ut := range eTests {
-                if newE := e(ut.p, ut.in, defaultOptions); newE != ut.out {
+                if newE := e(ut.p.Rank, ut.in, defaultOptions); newE != ut.out {
 			t.Errorf("TestE() = %+v, want %+v.", newE, ut.out)
 		}
 	}
@@ -112,9 +107,9 @@ var d2Tests = []*d2Test{
         &d2Test{
                 testPlayers[0],
                 Contests{
-                        newContest(testPlayers[1].r, testPlayers[1].rd, 1),
-                        newContest(testPlayers[2].r, testPlayers[2].rd, 0),
-                        newContest(testPlayers[3].r, testPlayers[3].rd, 0),
+                        newContest(testPlayers[1].R, testPlayers[1].RD, 1),
+                        newContest(testPlayers[2].R, testPlayers[2].RD, 0),
+                        newContest(testPlayers[3].R, testPlayers[3].RD, 0),
                 },
                 55433.47321339554,
         },
@@ -122,7 +117,7 @@ var d2Tests = []*d2Test{
 
 func TestD2(t *testing.T) {
 	for _, ut := range d2Tests {
-                if newD2 := d2(ut.p, ut.in, defaultOptions); newD2 != ut.out {
+                if newD2 := d2(ut.p.Rank, ut.in, defaultOptions); newD2 != ut.out {
 			t.Errorf("TestD2() = %+v, want %+v.", newD2, ut.out)
 		}
 	}
@@ -138,9 +133,9 @@ var rPrimeTests = []*rPrimeTest{
         &rPrimeTest{
                 testPlayers[0],
                 Contests{
-                        newContest(testPlayers[1].r, testPlayers[1].rd, 1),
-                        newContest(testPlayers[2].r, testPlayers[2].rd, 0),
-                        newContest(testPlayers[3].r, testPlayers[3].rd, 0),
+                        newContest(testPlayers[1].R, testPlayers[1].RD, 1),
+                        newContest(testPlayers[2].R, testPlayers[2].RD, 0),
+                        newContest(testPlayers[3].R, testPlayers[3].RD, 0),
                 },
                 1469,
         },
@@ -148,7 +143,7 @@ var rPrimeTests = []*rPrimeTest{
 
 func TestRPrime(t *testing.T) {
 	for _, ut := range rPrimeTests {
-                if newRPrime := rPrime(ut.p, ut.in, defaultOptions); newRPrime != ut.out {
+                if newRPrime := rPrime(ut.p.Rank, ut.in, defaultOptions); newRPrime != ut.out {
 			t.Errorf("TestRPrime() = %+v, want %+v.", newRPrime, ut.out)
 		}
 	}
@@ -164,9 +159,9 @@ var rdPrimeTests = []*rdPrimeTest{
         &rdPrimeTest{
                 testPlayers[0],
                 Contests{
-                        newContest(testPlayers[1].r, testPlayers[1].rd, 1),
-                        newContest(testPlayers[2].r, testPlayers[2].rd, 0),
-                        newContest(testPlayers[3].r, testPlayers[3].rd, 0),
+                        newContest(testPlayers[1].R, testPlayers[1].RD, 1),
+                        newContest(testPlayers[2].R, testPlayers[2].RD, 0),
+                        newContest(testPlayers[3].R, testPlayers[3].RD, 0),
                 },
                 156,
         },
@@ -174,7 +169,7 @@ var rdPrimeTests = []*rdPrimeTest{
 
 func TestRDPrime(t *testing.T) {
 	for _, ut := range rdPrimeTests {
-                if newRDPrime := rdPrime(ut.p, ut.in, defaultOptions); newRDPrime != ut.out {
+                if newRDPrime := rdPrime(ut.p.Rank, ut.in, defaultOptions); newRDPrime != ut.out {
 			t.Errorf("TestRDPrime() = %+v, want %+v.", newRDPrime, ut.out)
 		}
 	}
@@ -190,22 +185,22 @@ var updateRatingTests = []updateRatingTest{
         updateRatingTest{
                 testPlayers[0],
                 Contests{
-                        newContest(testPlayers[1].r, testPlayers[1].rd, 1),
-                        newContest(testPlayers[2].r, testPlayers[2].rd, 0),
-                        newContest(testPlayers[3].r, testPlayers[3].rd, 0),
+                        newContest(testPlayers[1].R, testPlayers[1].RD, 1),
+                        newContest(testPlayers[2].R, testPlayers[2].RD, 0),
+                        newContest(testPlayers[3].R, testPlayers[3].RD, 0),
                 },
-                &player{1469, 156},
+                newPlayer(1469, 156),
         },
 }
 
 func TestUpdateRating(t *testing.T) {
 	for _, ut := range updateRatingTests {
-                newR, newRD, err := UpdateRating(ut.p, ut.in)
+                newR, newRD, err := UpdateRating(ut.p.Rank, ut.in)
                 if err != nil {
 			t.Errorf("UpdateRating() err = %v, expect nil.", err)
                 }
-                if !(newRD == ut.out.RD() && newR == ut.out.R()) {
-			t.Errorf("UpdateRating() = %v %v, want %v %v.", newR, newRD, ut.out.R(), ut.out.RD())
+                if !(newRD == ut.out.Rank.RD && newR == ut.out.Rank.R) {
+			t.Errorf("UpdateRating() = %v %v, want %v %v.", newR, newRD, ut.out.R, ut.out.RD)
 		}
 	}
 }
@@ -220,7 +215,7 @@ var updateDecayTests = []updateDecayTest{
         updateDecayTest{
                 testPlayers[1],
                 Contests{},
-                &player{1400, 350},
+                newPlayer(1400, 350),
         },
 }
 
@@ -228,13 +223,13 @@ func TestDecayRating(t *testing.T) {
 	for _, ut := range updateDecayTests {
                 for i := 0; i < 31; i++ {
                         var err error
-                        ut.p.r, ut.p.rd, err = UpdateRating(ut.p, ut.in)
+                        ut.p.R, ut.p.RD, err = UpdateRating(ut.p.Rank, ut.in)
                         if err != nil {
                                 t.Errorf("UpdateRating() err = %v, expect nil.", err)
                         }
                 }
-                if !(ut.p.rd == ut.out.RD() && ut.p.r == ut.out.R()) {
-			t.Errorf("DecayRating() = %v %v, want %v %v.", ut.p.r, ut.p.rd, ut.out.R(), ut.out.RD())
+                if !(ut.p.RD == ut.out.RD && ut.p.R == ut.out.R) {
+			t.Errorf("DecayRating() = %v %v, want %v %v.", ut.p.R, ut.p.RD, ut.out.R, ut.out.RD)
 		}
 	}
 }

@@ -1,4 +1,4 @@
-// Implements the Glicko2 Rating System described at http://www.glicko.net/glicko.html.
+// Implements the Glicko Rating System described at http://www.glicko.net/glicko.html.
 package glicko
 
 import (
@@ -26,12 +26,35 @@ const (
         defaultC float64 = 63.2
 )
 
-type Rated interface {
-        // Rating
-        R() float64
-        // Rating Deviation
-        RD() float64
+//type Ranked interface {
+//        // Rating Accessors
+//        R() float64
+//        SetR(float64)
+//        // Rating Deviation Accessors
+//        RD() float64
+//        SetRD(float64)
+//}
+
+type Rank struct {
+        R float64
+        RD float64
 }
+
+//func (this *Rank) R() float64 {
+//        return this.r
+//}
+//
+//func (this *Rank) SetR(r float64) {
+//        this.r = r
+//}
+//
+//func (this *Rank) RD() float64 {
+//        return this.rd
+//}
+//
+//func (this *Rank) SetRD(rd float64) {
+//        this.rd = rd
+//}
 
 type options struct {
         minRD float64
@@ -40,16 +63,16 @@ type options struct {
         c       float64
 }
 
-// Result records a single game outcome against an opponent and that oppenents Params at the time.
+// Contest records a single contest outcome against an opponent and that oppenents rating and rating deviation at the time.
 type Contest struct {
         // 1 for win, 0 for loss, 0.5 for tie
         Outcome         float64
         // Rating and Deviation of Opponent
-        Rated
+        *Rank
 }
 
-func rd(player Rated, o *options) float64 {
-        return math.Min(math.Sqrt(player.RD() * player.RD() + o.c * o.c * o.t), o.maxRD)
+func rd(player *Rank, o *options) float64 {
+        return math.Min(math.Sqrt(player.RD * player.RD + o.c * o.c * o.t), o.maxRD)
 }
 
 func processOptions(os ...float64) (*options, error) {
@@ -62,7 +85,7 @@ func processOptions(os ...float64) (*options, error) {
         return nil, errors.New("Wrong number of options.  You must provide either 0 or 4 options.")
 }
 
-func rd2(player Rated, o *options) float64 {
+func rd2(player *Rank, o *options) float64 {
         newRD := rd(player, o)
         return newRD * newRD
 }
@@ -73,14 +96,14 @@ type Contests []*Contest
 const q = 0.00575646273249 // Log(10) / 400
 const q2 = q * q
 
-func rPrime(player Rated, cs Contests, o *options) float64 {
-        return math.Floor(player.R() + (q / ((1 / rd2(player, o)) + (1 / d2(player, cs, o)))) * gsSum(player, cs, o))
+func rPrime(player *Rank, cs Contests, o *options) float64 {
+        return math.Floor(player.R + (q / ((1 / rd2(player, o)) + (1 / d2(player, cs, o)))) * gsSum(player, cs, o))
 }
 
-func d2(player Rated, cs Contests, o *options) float64 {
+func d2(player *Rank, cs Contests, o *options) float64 {
         sum := 0.0
         for _, contest := range cs {
-                newRD := rd(contest.Rated, o)
+                newRD := rd(contest.Rank, o)
                 gRD := g(newRD)
                 sum += gRD * gRD * e1e(player, contest, o)
         }
@@ -90,41 +113,41 @@ func g(rd float64) float64 {
         return 1 / math.Sqrt(1 + (3 * q2 * math.Pow(rd, 2)) / math.Pow(math.Pi, 2))
 }
 
-func e(player Rated, contest *Contest, o *options) float64 {
-        return 1 / (1 + math.Pow(10, g(rd(contest.Rated, o)) * (player.R() - contest.R()) / -400))
+func e(player *Rank, contest *Contest, o *options) float64 {
+        return 1 / (1 + math.Pow(10, g(rd(contest.Rank, o)) * (player.R - contest.R) / -400))
 }
 
-func e1e(player Rated, contest *Contest, o *options) float64 {
+func e1e(player *Rank, contest *Contest, o *options) float64 {
         ec := e(player, contest, o)
         return ec * ( 1 - ec)
 }
 
-func gsSum(player Rated, cs Contests, o *options) (sum float64) {
+func gsSum(player *Rank, cs Contests, o *options) (sum float64) {
         for _, contest := range cs {
-                sum = g(rd(contest, o)) * (contest.Outcome - e(player, contest, o))
+                sum = g(rd(contest.Rank, o)) * (contest.Outcome - e(player, contest, o))
         }
         return sum
 }
 
-func rdPrime(player Rated, cs Contests, o *options) float64 {
+func rdPrime(player *Rank, cs Contests, o *options) float64 {
         return math.Max(math.Floor(math.Sqrt(1 / ((1 / rd2(player, o)) + (1 / d2(player, cs, o))))), o.minRD)
 }
 
 // Returns updated rating and updated rating deviation based on the provided contest results.
 // If len(options) == 0, default values for minRD, maxRD, t, and c are used.
 // Otherwise, must provide minRD, maxRD, t, and c.
-func UpdateRating(player Rated, cs Contests, options ...float64) (float64, float64, error) {
+func UpdateRating(player *Rank, cs Contests, options ...float64) (float64, float64, error) {
         o, err := processOptions(options...)
         switch {
         case err != nil:
                 return 0, 0, err
         case len(cs) == 0:
-                return player.R(), rd(player, o), nil
+                return player.R, rd(player, o), nil
         }
         return rPrime(player, cs, o), rdPrime(player, cs, o), nil
 }
 
-func ConfidenceInterval(player Rated) (float64, float64) {
-        twiceRd := 2.0 * player.RD()
-        return player.R() - twiceRd, player.R() + twiceRd
+func ConfidenceInterval(player *Rank) (float64, float64) {
+        twiceRd := 2.0 * player.RD
+        return player.R - twiceRd, player.R + twiceRd
 }
