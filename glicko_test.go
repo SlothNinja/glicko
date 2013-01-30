@@ -137,7 +137,7 @@ var rPrimeTests = []*rPrimeTest{
                         newContest(testPlayers[2].R, testPlayers[2].RD, 0),
                         newContest(testPlayers[3].R, testPlayers[3].RD, 0),
                 },
-                1469,
+                1461,
         },
 }
 
@@ -189,18 +189,18 @@ var updateRatingTests = []updateRatingTest{
                         newContest(testPlayers[2].R, testPlayers[2].RD, 0),
                         newContest(testPlayers[3].R, testPlayers[3].RD, 0),
                 },
-                newPlayer(1469, 156),
+                newPlayer(1461, 156),
         },
 }
 
 func TestUpdateRating(t *testing.T) {
 	for _, ut := range updateRatingTests {
-                newR, newRD, err := UpdateRating(ut.p.Rank, ut.in)
+                newRating, err := UpdateRating(ut.p.Rank, ut.in)
                 if err != nil {
 			t.Errorf("UpdateRating() err = %v, expect nil.", err)
                 }
-                if !(newRD == ut.out.Rank.RD && newR == ut.out.Rank.R) {
-			t.Errorf("UpdateRating() = %v %v, want %v %v.", newR, newRD, ut.out.R, ut.out.RD)
+                if !(newRating.RD == ut.out.Rank.RD && newRating.R == ut.out.Rank.R) {
+			t.Errorf("UpdateRating() = %v %v, want %v %v.", newRating.R, newRating.RD, ut.out.R, ut.out.RD)
 		}
 	}
 }
@@ -222,11 +222,11 @@ var updateDecayTests = []updateDecayTest{
 func TestDecayRating(t *testing.T) {
 	for _, ut := range updateDecayTests {
                 for i := 0; i < 31; i++ {
-                        var err error
-                        ut.p.R, ut.p.RD, err = UpdateRating(ut.p.Rank, ut.in)
+                        rating, err := UpdateRating(ut.p.Rank, ut.in)
                         if err != nil {
                                 t.Errorf("UpdateRating() err = %v, expect nil.", err)
                         }
+                        ut.p.R, ut.p.RD = rating.R, rating.RD
                 }
                 if !(ut.p.RD == ut.out.RD && ut.p.R == ut.out.R) {
 			t.Errorf("DecayRating() = %v %v, want %v %v.", ut.p.R, ut.p.RD, ut.out.R, ut.out.RD)
