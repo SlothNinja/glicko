@@ -148,7 +148,7 @@ func UpdateRating(rank *Rank, cs Contests, options ...float64) (*Rank, error) {
 	return &Rank{rPrime(rank, cs, o), rdPrime(rank, cs, o)}, nil
 }
 
-func ConfidenceInterval(rank *Rank) (float64, float64) {
+func ConfidenceInterval(rank *Rank) (int, int) {
 	twiceRd := 2.0 * rank.RD
-	return rank.R - twiceRd, rank.R + twiceRd
+	return int(rank.R - twiceRd), int(rank.R + twiceRd)
 }
