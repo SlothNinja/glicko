@@ -71,6 +71,10 @@ type Contest struct {
 	*Rank
 }
 
+func NewContest(outcome, r, rd float64) *Contest {
+        return &Contest{outcome, &Rank{r, rd}}
+}
+
 func rd(player *Rank, o *options) float64 {
 	return math.Min(math.Sqrt(player.RD*player.RD+o.c*o.c*o.t), o.maxRD)
 }
