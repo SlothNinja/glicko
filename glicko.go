@@ -101,7 +101,7 @@ const q = 0.00575646273249 // Log(10) / 400
 const q2 = q * q
 
 func rPrime(rank *Rank, cs Contests, o *options) float64 {
-	return math.Floor(rank.R + (q/((1/rd2(rank, o))+(1/d2(rank, cs, o))))*gsSum(rank, cs, o))
+	return rank.R + (q/((1/rd2(rank, o))+(1/d2(rank, cs, o))))*gsSum(rank, cs, o)
 }
 
 func d2(rank *Rank, cs Contests, o *options) float64 {
@@ -135,7 +135,7 @@ func gsSum(rank *Rank, cs Contests, o *options) (sum float64) {
 }
 
 func rdPrime(rank *Rank, cs Contests, o *options) float64 {
-	return math.Max(math.Floor(math.Sqrt(1/((1/rd2(rank, o))+(1/d2(rank, cs, o))))), o.minRD)
+	return math.Max(math.Sqrt(1/((1/rd2(rank, o))+(1/d2(rank, cs, o)))), o.minRD)
 }
 
 // Returns updated rating and updated rating deviation based on the provided contest results.

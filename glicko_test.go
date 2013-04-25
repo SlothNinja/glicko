@@ -137,7 +137,7 @@ var rPrimeTests = []*rPrimeTest{
                         newContest(testPlayers[2].R, testPlayers[2].RD, 0),
                         newContest(testPlayers[3].R, testPlayers[3].RD, 0),
                 },
-                1461,
+                1461.9750469796434,
         },
 }
 
@@ -163,7 +163,7 @@ var rdPrimeTests = []*rdPrimeTest{
                         newContest(testPlayers[2].R, testPlayers[2].RD, 0),
                         newContest(testPlayers[3].R, testPlayers[3].RD, 0),
                 },
-                156,
+                156.61387296904394,
         },
 }
 
@@ -189,7 +189,7 @@ var updateRatingTests = []updateRatingTest{
                         newContest(testPlayers[2].R, testPlayers[2].RD, 0),
                         newContest(testPlayers[3].R, testPlayers[3].RD, 0),
                 },
-                newPlayer(1461, 156),
+                newPlayer(1461.9750469796434, 156.61387296904394),
         },
 }
 
